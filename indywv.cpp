@@ -317,135 +317,104 @@ void IndyWV::decompressADPCM(DecompressorState* compState, char* outData, char* 
 
 int IndyWV::compressADPCM(DecompressorState* compState, char* outData, char* inData, int sndDataSize, unsigned int numChannels)
 {
-    char initialized;
-
-    char* v7 = outData + 3;
-    char v8 = 0;
-    int v9 = 0;
-    char v35 = 0;
-    char* v36 = outData + 3;
-    int v38 = 0;
-
-    unsigned int iChan = 0;
     if (numChannels == 0)
         return 0;
 
-    short* pKeySample = compState->keysample;
-    short* pKeySampleTmp = compState->keysample;
-    do
+    char initialized;
+
+    char* v7 = outData + 3;
+    int v9 = 0;
+    char accStep = 0;
+    char* v36 = outData + 3;
+    int v38 = 0;
+
+    for (uint8_t iChan = 0; iChan < numChannels; iChan++)
     {
-        char* v11 = inData;
+        char* pInData = inData;
         int lastIndex = *(char*)(compState + iChan);
-        int v12 = *pKeySample;
-        char* v34 = inData;
-        int v30 = v12;
-        if (sndDataSize)
-        {
-            int v40 = sndDataSize;
-            while (1)
+        int lastData = compState->keysample[iChan];
+        int v30 = lastData;
+
+        int remainingData = sndDataSize;
+        while (remainingData)
             {
                 int v32 = 0;
-                unsigned __int8 v33 = 0;
-                int v13 = (unsigned __int16)m_stepSizes[lastIndex];
+            int offset = 0;
+            int v13 = (uint32_t)m_stepSizes[lastIndex];
                 initialized = 0;
-                int v14 = *(__int16*)v11;
-                int v17 = v14 - v12;
-                unsigned __int8 v18 = m_steps[lastIndex];
-                unsigned __int8 v42 = v18;
-                int v19 = 1 << (v18 - 1);
-                char v43 = v19 - 1;
+            int v14 = *(__int16*)pInData;
+            int v17 = v14 - lastData;
+            unsigned char step = m_steps[lastIndex];
+            int stepshift = 1 << (step - 1);
+            char tempOffset = stepshift - 1;
                 if (v17 < 0)
                 {
-                    initialized = 1 << (v18 - 1);
+                initialized = 1 << ((step - 1) & 0x1f);
                     v17 = -v17;
                 }
-                int v20 = v19 >> 1;
-                int v21 = v18 - 1;
-                if (v18 != 1)
+            int v20 = stepshift >> 1;
+            int v21 = step - 1;
+            if (step != 1)
                 {
-                    int v22 = v18 - 2 + 1;
-                    do
+                for (int iStep = step - 1; iStep > 0; --iStep)
                     {
                         if (v17 >= v13)
                         {
                             v17 -= v13;
-                            v33 |= v20;
+                        offset |= v20;
                             v21 = v13 + v32;
                             v32 += v13;
                         }
                         v13 >>= 1;
                         v20 >>= 1;
-                        --v22;
-                    } while (v22);
                 }
-                if (v33)
+            }
+            if (offset)
                     v32 += v13;
-                unsigned __int8 v23 = 8 - (v35 & 7);
-                LOWORD(v21) = (unsigned __int8)(v33 | initialized);
-                v9 = (v38 << v18) | v21;
+            unsigned __int8 v23 = 8 - (accStep & 7);
+            LOWORD(v21) = (uint8_t)(offset | initialized);
+            v9 = (v38 << step) | v21;
                 v38 = v9;
-                v35 += v18;
-                if (v18 >= v23)
-                    *v36++ = (unsigned __int16)v9 >> (v18 - v23);
-                if (v33 == v43)
+            accStep += step;
+            if (step >= v23)
+                *v36++ = (uint16_t)v9 >> (step - v23);
+            if (offset == tempOffset)
                 {
-                    int v24 = *(__int16*)v34;
+                __int16 v24 = *(__int16*)pInData;
                     unsigned __int16 v26;
                     LOBYTE(v26) = BYTE1(v24);
                     HIBYTE(v26) = v9;
-                    v30 = v24;
                     char* v27 = v36 + 1;
-                    *v36 = v26 >> (v35 & 7);
+                *v36 = v26 >> (accStep & 7);
                     v9 = (unsigned __int16)v24;
                     v38 = (unsigned __int16)v24;
                     v36 += 2;
-                    *v27 = (unsigned __int16)v24 >> (v35 & 7);
+                *v27 = (unsigned __int16)v24 >> (accStep & 7);
+
+                lastData = v24;
                 }
                 else
                 {
-                    int v28 = v32;
-                    if (initialized)
-                        v28 = -v32;
-                    v12 = v28 + v30;
-                    v30 += v28;
-                    if (v30 >= -32768)
-                    {
-                        if (v12 > 32767)
-                            v30 = 32767;
+                lastData += initialized ? -v32 : v32;
+                lastData = Utils::clamp(lastData, -32768, 32767);
                     }
-                    else
-                    {
-                        v30 = -32768;
-                    }
-                }
-                v12 = v30;
 
-                lastIndex += getIndex(v42 * 4, v33);
+            lastIndex += getIndex(step * 4, offset);
                 lastIndex = Utils::clamp(lastIndex, 0, 88);
-                v34 += 2 * numChannels;
-                if (!--v40)
-                    break;
-                v11 = v34;
-            }
-            pKeySample = pKeySampleTmp;
+
+            pInData += 2;
+            --remainingData;
         }
 
-        ++pKeySample;
         *(unsigned char*)(iChan + compState) = lastIndex;
-        *(pKeySample - 1) = v12;
-        ++iChan;
+        compState->keysample[iChan] = lastData;
         inData += 2;
-        pKeySampleTmp = pKeySample;
-        if (iChan >= numChannels)
-        {
-            v8 = v35;
+    }
+
             v7 = v36;
-            break;
-        }
-    } while (true);
 
-    if ((v8 & 7) != 0)
-        *v7++ = v9 << (8 - (v8 & 7));
+    if ((accStep & 7) != 0)
+        *v7++ = v9 << (8 - (accStep & 7));
 
-    return (v7 - outData);
+    return (v7 - outData) + 4;
 }
