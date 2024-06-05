@@ -66,7 +66,7 @@ void LABN::decompressLabFile(const std::string& labPath, const std::string& outF
 
             size_t lastindex = fileName.find_last_of(".");
             auto fileNameNoExt = fileName.substr(0, lastindex);
-            std::string outPath = outFolder + fileNameNoExt + ".wav";
+            std::string outPath = outFolder + "\\" + fileNameNoExt + ".wav";
 
             file.seekg(entry.dataOffset + sizeof(IndyWVHeader), std::ios::beg);
 

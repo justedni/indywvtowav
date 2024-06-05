@@ -9,6 +9,8 @@
 
 #include "utils.h"
 #include "wav_writer.h"
+#include "wav_format.h"
+#include "wv_writer.h"
 
 // ----------------------------------------------------------------------------
 // from ida_defs.h
@@ -25,9 +27,13 @@
 #define WORDn(x, n)   (*((uint16_t*)&(x)+n))
 #define DWORDn(x, n)  (*((uint32_t*)&(x)+n))
 
+#define BYTE1(x)   BYTEn(x,  1)         // byte 1 (counting from 0)
+
 #define LOBYTE(x)  BYTEn(x,LOW_IND(x,uint8_t))
 #define LOWORD(x)  WORDn(x,LOW_IND(x,uint16_t))
 #define LODWORD(x) DWORDn(x,LOW_IND(x,uint32_t))
+
+#define HIBYTE(x)  BYTEn(x,HIGH_IND(x,uint8_t))
 // ----------------------------------------------------------------------------
 
 IndyWV::IndyWV()
@@ -80,6 +86,53 @@ void IndyWV::wv_to_wav(std::string& in_WvPath, std::string& in_outFilePath)
     delete[] outBuffer;
 }
 
+void IndyWV::wav_to_wv(std::string& in_WavPath, std::string& in_outFilePath)
+{
+    using namespace WavFormat;
+
+    std::ifstream file(in_WavPath, std::ios::in | std::ios::binary | std::ios::ate);
+    if (!file.is_open())
+        return;
+
+    std::streamsize fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<char> buffer(fileSize);
+    if (!file.read(buffer.data(), fileSize))
+        return;
+
+    const auto* wavHeader = reinterpret_cast<const WavHeader*>(buffer.data());
+    assert(strncmp((char*)wavHeader->tagRIFF, kRIFF, 4) == 0);
+
+    file.seekg(sizeof(WavHeader), std::ios::beg);
+
+    auto dataToRead = wavHeader->dataChunkSize;
+    char* inBuffer = new char[dataToRead];
+    memset(inBuffer, 0, dataToRead);
+    file.read(inBuffer, dataToRead);
+
+    if (wavHeader->numChannels == 1)
+    {
+        // INDYWV ADPCM compression
+        auto outSize = wavHeader->dataChunkSize / 2;
+        char* outBuffer = new char[outSize];
+        memset(outBuffer, 0, outSize);
+
+        auto state = DecompressorState();
+        auto compressedSize = compressADPCM(&state, outBuffer, inBuffer, outSize, wavHeader->numChannels);
+
+        WvWriter::write(in_outFilePath, wavHeader, outBuffer, compressedSize);
+
+        delete[] outBuffer;
+    }
+    else
+    {
+        // TODO handle WVSM compression
+    }
+
+    delete[] inBuffer;
+}
+
 void IndyWV::inflate(std::ifstream& istream, uint32_t inputDataSize, char* outBuffer, uint32_t infSize)
 { 
     using namespace Utils;
@@ -129,6 +182,7 @@ void IndyWV::inflate(std::ifstream& istream, uint32_t inputDataSize, char* outBu
     }
     else
     {
+        // ADPCM decompression
         auto dataToRead = inputDataSize;
         char* inBuffer = new char[dataToRead];
         memset(inBuffer, 0, dataToRead);
@@ -259,4 +313,139 @@ void IndyWV::decompressADPCM(DecompressorState* compState, char* outData, char* 
         compState->stepindex[k] = lastIndex;
         compState->keysample[k] = lastData;
     }
+}
+
+int IndyWV::compressADPCM(DecompressorState* compState, char* outData, char* inData, int sndDataSize, unsigned int numChannels)
+{
+    char initialized;
+
+    char* v7 = outData + 3;
+    char v8 = 0;
+    int v9 = 0;
+    char v35 = 0;
+    char* v36 = outData + 3;
+    int v38 = 0;
+
+    unsigned int iChan = 0;
+    if (numChannels == 0)
+        return 0;
+
+    short* pKeySample = compState->keysample;
+    short* pKeySampleTmp = compState->keysample;
+    do
+    {
+        char* v11 = inData;
+        int lastIndex = *(char*)(compState + iChan);
+        int v12 = *pKeySample;
+        char* v34 = inData;
+        int v30 = v12;
+        if (sndDataSize)
+        {
+            int v40 = sndDataSize;
+            while (1)
+            {
+                int v32 = 0;
+                unsigned __int8 v33 = 0;
+                int v13 = (unsigned __int16)m_stepSizes[lastIndex];
+                initialized = 0;
+                int v14 = *(__int16*)v11;
+                int v17 = v14 - v12;
+                unsigned __int8 v18 = m_steps[lastIndex];
+                unsigned __int8 v42 = v18;
+                int v19 = 1 << (v18 - 1);
+                char v43 = v19 - 1;
+                if (v17 < 0)
+                {
+                    initialized = 1 << (v18 - 1);
+                    v17 = -v17;
+                }
+                int v20 = v19 >> 1;
+                int v21 = v18 - 1;
+                if (v18 != 1)
+                {
+                    int v22 = v18 - 2 + 1;
+                    do
+                    {
+                        if (v17 >= v13)
+                        {
+                            v17 -= v13;
+                            v33 |= v20;
+                            v21 = v13 + v32;
+                            v32 += v13;
+                        }
+                        v13 >>= 1;
+                        v20 >>= 1;
+                        --v22;
+                    } while (v22);
+                }
+                if (v33)
+                    v32 += v13;
+                unsigned __int8 v23 = 8 - (v35 & 7);
+                LOWORD(v21) = (unsigned __int8)(v33 | initialized);
+                v9 = (v38 << v18) | v21;
+                v38 = v9;
+                v35 += v18;
+                if (v18 >= v23)
+                    *v36++ = (unsigned __int16)v9 >> (v18 - v23);
+                if (v33 == v43)
+                {
+                    int v24 = *(__int16*)v34;
+                    unsigned __int16 v26;
+                    LOBYTE(v26) = BYTE1(v24);
+                    HIBYTE(v26) = v9;
+                    v30 = v24;
+                    char* v27 = v36 + 1;
+                    *v36 = v26 >> (v35 & 7);
+                    v9 = (unsigned __int16)v24;
+                    v38 = (unsigned __int16)v24;
+                    v36 += 2;
+                    *v27 = (unsigned __int16)v24 >> (v35 & 7);
+                }
+                else
+                {
+                    int v28 = v32;
+                    if (initialized)
+                        v28 = -v32;
+                    v12 = v28 + v30;
+                    v30 += v28;
+                    if (v30 >= -32768)
+                    {
+                        if (v12 > 32767)
+                            v30 = 32767;
+                    }
+                    else
+                    {
+                        v30 = -32768;
+                    }
+                }
+                v12 = v30;
+
+                lastIndex += getIndex(v42 * 4, v33);
+                lastIndex = Utils::clamp(lastIndex, 0, 88);
+                v34 += 2 * numChannels;
+                if (!--v40)
+                    break;
+                v11 = v34;
+            }
+            pKeySample = pKeySampleTmp;
+        }
+
+        ++pKeySample;
+        *(unsigned char*)(iChan + compState) = lastIndex;
+        *(pKeySample - 1) = v12;
+        ++iChan;
+        inData += 2;
+        pKeySampleTmp = pKeySample;
+        if (iChan >= numChannels)
+        {
+            v8 = v35;
+            v7 = v36;
+            break;
+        }
+    } while (true);
+
+    if ((v8 & 7) != 0)
+        *v7++ = v9 << (8 - (v8 & 7));
+
+    return (v7 - outData);
 }

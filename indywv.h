@@ -38,15 +38,19 @@ public:
     };
 
     void wv_to_wav(std::string& in_WvPath, std::string& in_outFilePath);
+    void wav_to_wv(std::string& in_WavPath, std::string& in_outFilePath);
 
 protected:
     void inflate(std::ifstream& istream, uint32_t inputDataSize, char* outBuffer, uint32_t infSize);
+    void compress(std::ifstream& istream, uint32_t inputDataSize, char* outBuffer, uint32_t infSize);
     friend class UnitTest;
     friend class LABN;
 
 private:
     void wvsmInflateBlock(std::ifstream& istream, std::size_t blockSize, short*& outData);
     void decompressADPCM(DecompressorState* compState, char* outData, char* in_data, int dataSize, unsigned int numChannels);
+
+    int compressADPCM(DecompressorState* compState, char* outData, char* in_data, int dataSize, unsigned int numChannels);
 
     char getIndex(int addr, int offset);
 

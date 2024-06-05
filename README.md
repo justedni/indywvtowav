@@ -1,13 +1,17 @@
 # IndyWV To WAV converter
 
-IndyWV is a proprietary sound file format developed by LucasArts used in several of their games at the end of the 90s.
-The data is compressed and audio cannot be played with commercial media players.
-**indywvtowav.exe** can be used to convert those files to playable .wav files.
+IndyWV is a proprietary sound file format developed by LucasArts. It was used in multiple games in the late 90s.
+The audio data is compressed. **indywvtowav.exe** can be used to convert those files to playable .wav files.
+
+Currently handled conversions:
+- INDYWV to WAV
+- LAB to multiple WAVs (LAB is another proprietary format. It is basically a collection of files)
+- WAV to INDYWV (work in progress)
 
 ## Usage
 ```
--in <FilePath> : full path of input file, INDYWV or LAB. Type will be auto-deduced)
--out <Folder> : path of output folder
+-in <FilePath> : full path of input file, INDYWV, WAV or LAB (file type will be auto-deduced)
+-out <FileOrFolderPath> : path of output file or output folder
 [-unit_test] : performs unit test - checks algorithm integrity (optional)
 ```
 
