@@ -5,5 +5,5 @@
 class UnitTest
 {
 public:
-	static void unit_test(std::string& in_WvPath, std::string& in_referenceWavFilePath);
+	static void unit_test(const std::string& testName, const std::string& in_leftFilePath, const std::string& in_rightFilePath);
 };

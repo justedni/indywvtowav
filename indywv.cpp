@@ -320,12 +320,9 @@ int IndyWV::compressADPCM(DecompressorState* compState, char* outData, char* inD
     if (numChannels == 0)
         return 0;
 
-    char initialized;
-
-    char* v7 = outData + 3;
     int v9 = 0;
     char accStep = 0;
-    char* v36 = outData + 3;
+    char* pOutData = outData;
     int v38 = 0;
 
     for (uint8_t iChan = 0; iChan < numChannels; iChan++)
@@ -337,70 +334,70 @@ int IndyWV::compressADPCM(DecompressorState* compState, char* outData, char* inD
 
         int remainingData = sndDataSize;
         while (remainingData)
-            {
-                int v32 = 0;
+        {
+            int v32 = 0;
             int offset = 0;
-            int v13 = (uint32_t)m_stepSizes[lastIndex];
-                initialized = 0;
+            uint16_t v13 = m_stepSizes[lastIndex];
+            char initialized = 0;
             int v14 = *(__int16*)pInData;
             int v17 = v14 - lastData;
             unsigned char step = m_steps[lastIndex];
             int stepshift = 1 << (step - 1);
             char tempOffset = stepshift - 1;
-                if (v17 < 0)
-                {
+            if (v17 < 0)
+            {
                 initialized = 1 << ((step - 1) & 0x1f);
-                    v17 = -v17;
-                }
+                v17 = -v17;
+            }
             int v20 = stepshift >> 1;
             int v21 = step - 1;
             if (step != 1)
-                {
+            {
                 for (int iStep = step - 1; iStep > 0; --iStep)
+                {
+                    if (v17 >= v13)
                     {
-                        if (v17 >= v13)
-                        {
-                            v17 -= v13;
+                        v17 -= v13;
                         offset |= v20;
-                            v21 = v13 + v32;
-                            v32 += v13;
-                        }
-                        v13 >>= 1;
-                        v20 >>= 1;
+                        v21 = v13 + v32;
+                        v32 += v13;
+                    }
+                    v13 >>= 1;
+                    v20 >>= 1;
                 }
             }
             if (offset)
-                    v32 += v13;
+                v32 += v13;
             unsigned __int8 v23 = 8 - (accStep & 7);
             LOWORD(v21) = (uint8_t)(offset | initialized);
             v9 = (v38 << step) | v21;
-                v38 = v9;
+            v38 = v9;
             accStep += step;
             if (step >= v23)
-                *v36++ = (uint16_t)v9 >> (step - v23);
+                *pOutData++ = (uint16_t)v9 >> (step - v23);
             if (offset == tempOffset)
-                {
+            {
                 __int16 v24 = *(__int16*)pInData;
-                    unsigned __int16 v26;
-                    LOBYTE(v26) = BYTE1(v24);
-                    HIBYTE(v26) = v9;
-                    char* v27 = v36 + 1;
-                *v36 = v26 >> (accStep & 7);
-                    v9 = (unsigned __int16)v24;
-                    v38 = (unsigned __int16)v24;
-                    v36 += 2;
+                unsigned __int16 v26;
+                LOBYTE(v26) = BYTE1(v24);
+                HIBYTE(v26) = v9;
+                char* v27 = pOutData + 1;
+                *pOutData = v26 >> (accStep & 7);
+                v9 = (unsigned __int16)v24;
+                v38 = (unsigned __int16)v24;
+                pOutData += 2;
                 *v27 = (unsigned __int16)v24 >> (accStep & 7);
 
                 lastData = v24;
-                }
-                else
-                {
+            }
+            else
+            {
                 lastData += initialized ? -v32 : v32;
                 lastData = Utils::clamp(lastData, -32768, 32767);
-                    }
+            }
 
             lastIndex += getIndex(step * 4, offset);
-                lastIndex = Utils::clamp(lastIndex, 0, 88);
+            lastIndex = Utils::clamp(lastIndex, 0, 88);
 
             pInData += 2;
             --remainingData;
@@ -411,10 +408,9 @@ int IndyWV::compressADPCM(DecompressorState* compState, char* outData, char* inD
         inData += 2;
     }
 
-            v7 = v36;
-
     if ((accStep & 7) != 0)
-        *v7++ = v9 << (8 - (accStep & 7));
+        *pOutData++ = v9 << (8 - (accStep & 7));
 
-    return (v7 - outData) + 4;
+    int writtenBytes = (pOutData - outData);
+    return writtenBytes + 4;
 }

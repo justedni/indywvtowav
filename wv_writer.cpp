@@ -17,10 +17,12 @@ void write(std::string& path, const WavFormat::WavHeader* wavHeader, char* inDat
     writeInt(os, (uint32_t)(wavHeader->sampleRate));
     writeInt(os, (uint32_t)(wavHeader->bitDepth));
     writeInt(os, (uint32_t)(wavHeader->numChannels));
-    writeInt(os, (uint32_t)(compressedSize));
+    writeInt(os, (uint32_t)(compressedSize + 3));
     writeInt(os, (int32_t)0);
     writeInt(os, (int32_t)wavHeader->dataChunkSize);
-    os.write((char*)inData, compressedSize);
+    writeInt(os, (int8_t)0); // Unknown
+    writeInt(os, (int16_t)0); // Unknown
+    os.write((char*)inData, compressedSize - 4);
 }
 
 } // namespace WvWriter

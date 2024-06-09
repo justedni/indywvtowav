@@ -53,7 +53,6 @@ std::string getOutFilePath(const std::string& inPath, const std::string& outArg,
     else
     {
         auto ext = get_file_ext(outArg);
-        assert(ext == outExt);
         return outArg;
     }
 }
@@ -111,13 +110,32 @@ int main(int argc, const char* argv[])
     {
         auto converter = IndyWV();
 
-        std::string wvPath = "..\\UnitTest\\mono_adpcm_test.WV";
-        std::string refFile = "..\\UnitTest\\mono_adpcm_test.wav";
-        UnitTest::unit_test(wvPath, refFile);
+        std::string wvFile = "..\\..\\UnitTest\\dice_mono_adpcm.wv";
+        std::string wavFile = "..\\..\\UnitTest\\dice_mono_adpcm.wav";
 
-        wvPath = "..\\UnitTest\\stereo_wvsm_test.wv";
-        refFile = "..\\UnitTest\\stereo_wvsm_test.wav";
-        UnitTest::unit_test(wvPath, refFile);
+        {
+            std::string tmpWavFile = wvFile + "_temp.wav";
+            IndyWV().wv_to_wav(wvFile, tmpWavFile);
+            UnitTest::unit_test("ADPCM wv->wav", tmpWavFile, wavFile);
+            std::remove(tmpWavFile.c_str());
+        }
+        
+        {
+            std::string tmpWvFile = wvFile + "_temp.wv";
+            IndyWV().wav_to_wv(wavFile, tmpWvFile);
+            UnitTest::unit_test("ADPCM wav->wv", tmpWvFile, wvFile);
+            std::remove(tmpWvFile.c_str());
+        }
+
+        {
+            wvFile = "..\\..\\UnitTest\\stereo_wvsm_test.wv";
+            wavFile = "..\\..\\UnitTest\\stereo_wvsm_test.wav";
+
+            std::string tmpWavFile = wvFile + "_temp.wav";
+            IndyWV().wv_to_wav(wvFile, tmpWavFile);
+            UnitTest::unit_test("WVSM wv->wav", tmpWavFile, wavFile);
+            std::remove(tmpWavFile.c_str());
+        }
         return 0;
     }
 
