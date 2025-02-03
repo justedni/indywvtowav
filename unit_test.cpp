@@ -1,7 +1,7 @@
 #include "unit_test.h"
 
 #include "indywv.h"
-#include "wav_writer.h"
+#include "wave.h"
 
 #include <vector>
 #include <assert.h>
@@ -39,7 +39,7 @@ void UnitTest::unit_test(const std::string& testName, const std::string& in_left
     {
         std::cerr << "Failed!\n";
 #ifdef _DEBUG
-        assert(bSuccess, "Unit test failed!");
+        assert(bSuccess && "Unit test failed!");
 #endif
     }
 }

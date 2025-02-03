@@ -3,27 +3,10 @@
 #include <stdint.h>
 #include <string>
 
-class LABN
-{
-public:
-    constexpr static char kLABNId[4] = { 'L', 'A', 'B', 'N' };
+namespace LABN {
 
-    void decompressLabFile(const std::string& labPath, const std::string& outFolder);
+constexpr static char kLABNId[4] = { 'L', 'A', 'B', 'N' };
 
-private:
-    struct LabHeader
-    {
-        uint8_t  id[4];
-        uint32_t unknown;
-        uint32_t fileCount;
-        uint32_t fileNameListLength;
-    };
+void decompress(const std::string& labPath, const std::string& outFolder);
 
-    struct LabFileEntry
-    {
-        uint32_t nameOffset;
-        uint32_t dataOffset;
-        uint32_t sizeInBytes;
-        uint8_t  typeId[4];
-    };
-};
+} // namespace LABN

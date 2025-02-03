@@ -8,9 +8,7 @@
 #include <iostream>
 
 #include "utils.h"
-#include "wav_writer.h"
-#include "wav_format.h"
-#include "wv_writer.h"
+#include "wave.h"
 
 // ----------------------------------------------------------------------------
 // from ida_defs.h
@@ -43,7 +41,7 @@ IndyWV::IndyWV()
     {
         for (uint32_t j = 0; j < 0x59; ++j)
         {
-            int16_t stepsize = m_stepSizes[j];
+            int16_t stepsize = aStepTable[j];
             int16_t acc = 0;
 
             for (uint32_t mask = 32; mask > 0; mask >>= 1)
@@ -54,12 +52,12 @@ IndyWV::IndyWV()
             }
 
             auto offset = (64 * j + i);
-            m_constructedIndexData[offset] = acc;
+            aDeltaTable[offset] = acc;
         }
     }
 }
 
-void IndyWV::wv_to_wav(std::string& in_WvPath, std::string& in_outFilePath)
+void IndyWV::wv_to_wav(const std::string& in_WvPath, std::string& in_outFilePath)
 {
     std::ifstream file(in_WvPath, std::ios::in | std::ios::binary | std::ios::ate);
     if (!file.is_open())
@@ -80,15 +78,16 @@ void IndyWV::wv_to_wav(std::string& in_WvPath, std::string& in_outFilePath)
 
     file.seekg(sizeof(IndyWVHeader), std::ios::beg);
 
-    inflate(file, wvHeader->dataSize, outBuffer, wvHeader->decompressedSize);
-    WavWriter::write(in_outFilePath, wvHeader, outBuffer);
+    decompress(file, wvHeader->dataSize, outBuffer, wvHeader->decompressedSize);
+    Wave::write(in_outFilePath, outBuffer,
+        wvHeader->decompressedSize, wvHeader->numChannels, wvHeader->sampleRate, wvHeader->sampleBitSize);
 
     delete[] outBuffer;
 }
 
-void IndyWV::wav_to_wv(std::string& in_WavPath, std::string& in_outFilePath)
+void IndyWV::wav_to_wv(const std::string& in_WavPath, std::string& in_outFilePath)
 {
-    using namespace WavFormat;
+    using namespace Wave;
 
     std::ifstream file(in_WavPath, std::ios::in | std::ios::binary | std::ios::ate);
     if (!file.is_open())
@@ -121,7 +120,7 @@ void IndyWV::wav_to_wv(std::string& in_WavPath, std::string& in_outFilePath)
         auto state = DecompressorState();
         auto compressedSize = compressADPCM(&state, outBuffer, inBuffer, outSize, wavHeader->numChannels);
 
-        WvWriter::write(in_outFilePath, wavHeader, outBuffer, compressedSize);
+        write_wv_file(in_outFilePath, wavHeader, outBuffer, compressedSize);
 
         delete[] outBuffer;
     }
@@ -133,11 +132,11 @@ void IndyWV::wav_to_wv(std::string& in_WavPath, std::string& in_outFilePath)
     delete[] inBuffer;
 }
 
-void IndyWV::inflate(std::ifstream& istream, uint32_t inputDataSize, char* outBuffer, uint32_t infSize)
+void IndyWV::decompress(std::ifstream& istream, uint32_t inputDataSize, char* outBuffer, uint32_t infSize)
 { 
     using namespace Utils;
 
-    std::size_t numChannels = 1;
+    uint16_t numChannels = 1;
     auto state = DecompressorState();
 
     auto unknownParam1 = readBytes<int8_t>(istream);
@@ -188,7 +187,7 @@ void IndyWV::inflate(std::ifstream& istream, uint32_t inputDataSize, char* outBu
         memset(inBuffer, 0, dataToRead);
         istream.read(inBuffer, dataToRead);
 
-        decompressADPCM(&state, outBuffer, inBuffer, infSize / (numChannels << 1), numChannels);
+        decompressADPCM(&state, outBuffer, inBuffer, infSize / (uint16_t)(numChannels << 1), numChannels);
 
         delete[] inBuffer;
     }
@@ -251,7 +250,7 @@ void IndyWV::decompressADPCM(DecompressorState* compState, char* outData, char* 
         int remainingData = dataSize;
         while (remainingData)
         {
-            unsigned char step = m_steps[lastIndex];
+            unsigned char step = aStepBits[lastIndex];
             int stepshift = 1 << (step - 1);
             char tempOffset = stepshift - 1;
             accStep += step;
@@ -287,10 +286,10 @@ void IndyWV::decompressADPCM(DecompressorState* compState, char* outData, char* 
             else
             {
                 auto tableOffset = (lastIndex << 6) | (offset << (7 - step));
-                int dataOffset = *(uint16_t*)&m_constructedIndexData[tableOffset];
+                int dataOffset = *(uint16_t*)&aDeltaTable[tableOffset];
                 if ((uint16_t)offset)
                 {
-                    dataOffset += (uint32_t)m_stepSizes[lastIndex] >> (step - 1);
+                    dataOffset += (uint32_t)aStepTable[lastIndex] >> (step - 1);
                 }
 
                 if (stepshift > 0)
@@ -302,7 +301,7 @@ void IndyWV::decompressADPCM(DecompressorState* compState, char* outData, char* 
             *pOutData = prediction;
             pOutData += numChannels;
 
-            int index = getIndex(step * 4, offset) + lastIndex;
+            int index = aIndexTableTable[step][offset] + lastIndex;
             index = Utils::clamp(index, 0, 88);
             lastIndex = index;
             --remainingData;
@@ -337,11 +336,11 @@ int IndyWV::compressADPCM(DecompressorState* compState, char* outData, char* inD
         {
             int v32 = 0;
             int offset = 0;
-            uint16_t v13 = m_stepSizes[lastIndex];
+            uint16_t v13 = aStepTable[lastIndex];
             char initialized = 0;
             int v14 = *(__int16*)pInData;
             int v17 = v14 - lastData;
-            unsigned char step = m_steps[lastIndex];
+            unsigned char step = aStepBits[lastIndex];
             int stepshift = 1 << (step - 1);
             char tempOffset = stepshift - 1;
             if (v17 < 0)
@@ -396,7 +395,7 @@ int IndyWV::compressADPCM(DecompressorState* compState, char* outData, char* inD
                 lastData = Utils::clamp(lastData, -32768, 32767);
             }
 
-            lastIndex += getIndex(step * 4, offset);
+            lastIndex += aIndexTableTable[step][offset];
             lastIndex = Utils::clamp(lastIndex, 0, 88);
 
             pInData += 2;
@@ -411,6 +410,23 @@ int IndyWV::compressADPCM(DecompressorState* compState, char* outData, char* inD
     if ((accStep & 7) != 0)
         *pOutData++ = v9 << (8 - (accStep & 7));
 
-    int writtenBytes = (pOutData - outData);
+    int writtenBytes = (int)(pOutData - outData);
     return writtenBytes + 4;
+}
+
+void IndyWV::write_wv_file(std::string& path, const Wave::WavHeader* wavHeader, char* inData, uint32_t compressedSize)
+{
+    using namespace Utils;
+
+    std::ofstream os(path, std::ofstream::binary);
+    os.write(IndyWV::kIndyWV, sizeof(IndyWV::kIndyWV));
+    writeInt(os, (uint32_t)(wavHeader->sampleRate));
+    writeInt(os, (uint32_t)(wavHeader->bitDepth));
+    writeInt(os, (uint32_t)(wavHeader->numChannels));
+    writeInt(os, (uint32_t)(compressedSize + 3));
+    writeInt(os, (int32_t)0);
+    writeInt(os, (int32_t)wavHeader->dataChunkSize);
+    writeInt(os, (int8_t)0); // Unknown
+    writeInt(os, (int16_t)0); // Unknown
+    os.write((char*)inData, compressedSize - 4);
 }

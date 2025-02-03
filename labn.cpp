@@ -1,13 +1,31 @@
 #include "labn.h"
 
 #include "indywv.h"
-#include "wav_writer.h"
+#include "wave.h"
 
 #include <vector>
 #include <assert.h>
 #include <iostream>
 
-void LABN::decompressLabFile(const std::string& labPath, const std::string& outFolder)
+namespace LABN {
+
+struct LabHeader
+{
+    uint8_t  id[4];
+    uint32_t unknown;
+    uint32_t fileCount;
+    uint32_t fileNameListLength;
+};
+
+struct LabFileEntry
+{
+    uint32_t nameOffset;
+    uint32_t dataOffset;
+    uint32_t sizeInBytes;
+    uint8_t  typeId[4];
+};
+
+void decompress(const std::string& labPath, const std::string& outFolder)
 {
     std::ifstream file(labPath, std::ios::in | std::ios::binary | std::ios::ate);
     if (!file.is_open())
@@ -70,10 +88,14 @@ void LABN::decompressLabFile(const std::string& labPath, const std::string& outF
 
             file.seekg(entry.dataOffset + sizeof(IndyWVHeader), std::ios::beg);
 
-            indyConverter.inflate(file, wvHeader->dataSize, outBuffer, wvHeader->decompressedSize);
-            WavWriter::write(outPath, wvHeader, outBuffer);
+            indyConverter.decompress(file, wvHeader->dataSize, outBuffer, wvHeader->decompressedSize);
+
+            Wave::write(outPath, outBuffer,
+                wvHeader->decompressedSize, wvHeader->numChannels, wvHeader->sampleRate, wvHeader->sampleBitSize);
 
             delete[] outBuffer;
         }
     }
 }
+
+} // namespace LABN

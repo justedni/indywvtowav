@@ -2,13 +2,11 @@
 
 #include <fstream>
 
-#ifdef __GNUC__
-#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
-#endif
+#include "common.h"
 
-#ifdef _MSC_VER
-#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
-#endif
+namespace Wave {
+    struct WavHeader;
+}
 
 PACK(struct IndyWVHeader
 {
@@ -37,14 +35,12 @@ public:
         int16_t keysample[2];
     };
 
-    void wv_to_wav(std::string& in_WvPath, std::string& in_outFilePath);
-    void wav_to_wv(std::string& in_WavPath, std::string& in_outFilePath);
+    void wv_to_wav(const std::string& in_WvPath, std::string& in_outFilePath);
+    void wav_to_wv(const std::string& in_WavPath, std::string& in_outFilePath);
 
-protected:
-    void inflate(std::ifstream& istream, uint32_t inputDataSize, char* outBuffer, uint32_t infSize);
-    void compress(std::ifstream& istream, uint32_t inputDataSize, char* outBuffer, uint32_t infSize);
-    friend class UnitTest;
-    friend class LABN;
+    void write_wv_file(std::string& path, const Wave::WavHeader* wavHeader, char* inData, uint32_t compressedSize);
+
+    void decompress(std::ifstream& istream, uint32_t inputDataSize, char* outBuffer, uint32_t infSize);
 
 private:
     void wvsmInflateBlock(std::ifstream& istream, std::size_t blockSize, short*& outData);
@@ -52,10 +48,10 @@ private:
 
     int compressADPCM(DecompressorState* compState, char* outData, char* in_data, int dataSize, unsigned int numChannels);
 
-    char getIndex(int addr, int offset);
+    static const char* aIndexTableTable[8];
 
-    static const unsigned short m_stepSizes[89];
-    static const char m_steps[96];
+    static const unsigned short aStepTable[89];
+    static const char aStepBits[96];
 
-    short m_constructedIndexData[5696];
+    static short aDeltaTable[5696];
 };

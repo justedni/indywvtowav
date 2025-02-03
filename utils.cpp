@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <algorithm>
+
 namespace Utils
 {
     void peekChar(std::ifstream& stream, char* data, size_t size)
@@ -22,9 +24,13 @@ namespace Utils
         return static_cast<int16_t>(lo << 8) | hi;
     }
 
-    float clamp(float val, float lower, float upper)
+    std::string str_to_lower(const std::string& inputStr)
     {
-        return std::max(lower, std::min(val, upper));
+        std::string retStr = inputStr;
+        std::transform(retStr.begin(), retStr.end(), retStr.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+
+        return retStr;
     }
 
 } // namespace Utils

@@ -7,9 +7,10 @@
 #include "Utils.h"
 #include "indywv.h"
 #include "labn.h"
-#include "wav_writer.h"
-#include "wav_format.h"
+#include "wave.h"
 #include "unit_test.h"
+
+#include "cryo_apc.h"
 
 #include <unordered_map>
 
@@ -52,7 +53,6 @@ std::string getOutFilePath(const std::string& inPath, const std::string& outArg,
     }
     else
     {
-        auto ext = get_file_ext(outArg);
         return outArg;
     }
 }
@@ -89,6 +89,119 @@ void printUsage()
         << "[-unit_test] : performs unit test - checks algorithm integrity (optional)\n";
 }
 
+EFileType getFileTypeFromExt(const std::string& filePath)
+{
+    auto path = std::filesystem::path(filePath);
+    auto ext = Utils::str_to_lower(path.extension().string());
+    if (ext == ".lab") { return EFileType::LABN; }
+    else if (ext == ".wv") { return EFileType::IndyWV; }
+    else if (ext == ".wav") { return EFileType::Wave; }
+    else if (ext == ".apc") { return EFileType::CryoAPC; }
+
+    return EFileType::Unknown;
+}
+
+EFileType getFileType(std::ifstream& file)
+{
+    file.seekg(0, std::ios::beg);
+
+    char header[8];
+    Utils::peekChar(file, header, 8);
+
+    if (strncmp(header, LABN::kLABNId, sizeof(LABN::kLABNId)) == 0)
+    {
+        return EFileType::LABN;
+    }
+    else if (strncmp(header, IndyWV::kIndyWV, sizeof(IndyWV::kIndyWV)) == 0)
+    {
+        return EFileType::IndyWV;
+    }
+    else if (strncmp(header, Wave::kRIFF, sizeof(Wave::kRIFF)) == 0)
+    {
+        return EFileType::Wave;
+    }
+    else if (strncmp(header, CryoAPC::kAPCTag, sizeof(CryoAPC::kAPCTag)) == 0)
+    {
+        return EFileType::CryoAPC;
+    }
+
+    return EFileType::Unknown;
+}
+
+bool convertFile(const std::string& inputPath, const std::string& outputArg)
+{
+    std::ifstream file(inputPath, std::ios::in | std::ios::binary | std::ios::ate);
+    if (!file.is_open())
+        return false;
+
+    EFileType fileType = getFileTypeFromExt(inputPath);
+    EFileType actualFileType = getFileType(file);
+    assert(fileType == actualFileType);
+
+    switch (fileType)
+    {
+    case EFileType::IndyWV:
+    {
+        auto outFilePath = getOutFilePath(inputPath, outputArg, "wav");
+        IndyWV().wv_to_wav(inputPath, outFilePath);
+        break;
+    }
+    case EFileType::LABN:
+    {
+        auto outFolderPath = getOutFolderPath(outputArg);
+        LABN::decompress(inputPath, outFolderPath);
+        break;
+    }
+    case EFileType::Wave:
+    {
+        auto outFilePath = getOutFilePath(inputPath, outputArg, "wv");
+        IndyWV().wav_to_wv(inputPath, outFilePath);
+        break;
+    }
+    case EFileType::CryoAPC:
+    {
+        auto outFilePath = getOutFilePath(inputPath, outputArg, "wav");
+        CryoAPC::apc_to_wav(inputPath, outFilePath);
+        break;
+    }
+    case EFileType::Unknown:
+    default:
+        std::cerr << "Unrecognized input file type\n";
+    }
+}
+
+void do_unit_tests()
+{
+    struct Test
+    {
+        std::string name;
+        std::string inFile;
+        std::string outExt;
+        std::string refFile;
+    };
+
+    std::vector<Test> tests{
+        { "INDYWV (ADPCM) to WAV", "dice_mono_adpcm.wv", "wav", "dice_mono_adpcm.wav" },
+        { "WAV (ADPCM) to INDYWV", "dice_mono_adpcm.wav", "wv", "dice_mono_adpcm.wv" },
+        { "INDYWV (WVSM) to WAV", "stereo_wvsm_test.wv", "wav", "stereo_wvsm_test.wav" },
+        { "APC (mono) to WAV", "toctoc_mono.apc", "wav", "toctoc_mono.wav" },
+        { "APC (stereo) to WAV", "eboulis_stereo.apc", "wav", "eboulis_stereo.wav" },
+    };
+
+    namespace fs = std::filesystem;
+    auto folder = fs::path("..\\..\\UnitTest");
+
+    for (auto& test : tests)
+    {
+        auto inPath = folder / test.inFile;
+        auto outPath = (folder / "temp").string() + "." + test.outExt;
+        auto refFilePath = folder / test.refFile;
+        convertFile(inPath.string(), outPath);
+        UnitTest::unit_test(test.name, outPath, refFilePath.string());
+        std::remove(outPath.c_str());
+    }
+}
+
 int main(int argc, const char* argv[])
 {
     std::vector<std::string> args(argv + 1, argv + argc);
@@ -108,34 +221,7 @@ int main(int argc, const char* argv[])
 
     if (result.find(kUnitTestArg) != result.end())
     {
-        auto converter = IndyWV();
-
-        std::string wvFile = "..\\..\\UnitTest\\dice_mono_adpcm.wv";
-        std::string wavFile = "..\\..\\UnitTest\\dice_mono_adpcm.wav";
-
-        {
-            std::string tmpWavFile = wvFile + "_temp.wav";
-            IndyWV().wv_to_wav(wvFile, tmpWavFile);
-            UnitTest::unit_test("ADPCM wv->wav", tmpWavFile, wavFile);
-            std::remove(tmpWavFile.c_str());
-        }
-        
-        {
-            std::string tmpWvFile = wvFile + "_temp.wv";
-            IndyWV().wav_to_wv(wavFile, tmpWvFile);
-            UnitTest::unit_test("ADPCM wav->wv", tmpWvFile, wvFile);
-            std::remove(tmpWvFile.c_str());
-        }
-
-        {
-            wvFile = "..\\..\\UnitTest\\stereo_wvsm_test.wv";
-            wavFile = "..\\..\\UnitTest\\stereo_wvsm_test.wav";
-
-            std::string tmpWavFile = wvFile + "_temp.wav";
-            IndyWV().wv_to_wav(wvFile, tmpWavFile);
-            UnitTest::unit_test("WVSM wv->wav", tmpWavFile, wavFile);
-            std::remove(tmpWavFile.c_str());
-        }
+        do_unit_tests();
         return 0;
     }
 
@@ -153,35 +239,20 @@ int main(int argc, const char* argv[])
         return -1;
     }
 
-    std::string inputFile = result[kInArg][0];
+    std::string inputPath = result[kInArg][0];
     std::string outArg = result[kOutArg][0];
 
-    std::ifstream file (inputFile, std::ios::in | std::ios::binary | std::ios::ate);
-    if (!file.is_open())
-        return -1;
-
-    file.seekg(0, std::ios::beg);
-
-    char header[6];
-    Utils::peekChar(file, header, 6);
-
-    if (strncmp(header, LABN::kLABNId, 4) == 0)
+    namespace fs = std::filesystem;
+    auto inPath = std::filesystem::path(inputPath);
+    if (fs::is_directory(inPath))
     {
-        auto outFolderPath = getOutFolderPath(outArg);
-        LABN().decompressLabFile(inputFile, outFolderPath);
+        for (const auto& entry : std::filesystem::directory_iterator(inPath))
+        {
+            convertFile(entry.path().string(), outArg);
+        }
     }
-    else if (strncmp(header, IndyWV::kIndyWV, 6) == 0)
+    else if (fs::is_regular_file(inPath))
     {
-        auto outFilePath = getOutFilePath(inputFile, outArg, "wav");
-        IndyWV().wv_to_wav(inputFile, outFilePath);
-    }
-    else if (strncmp(header, WavFormat::kRIFF, 4) == 0)
-    {
-        auto outFilePath = getOutFilePath(inputFile, outArg, "wv");
-        IndyWV().wav_to_wv(inputFile, outFilePath);
-    }
-    else
-    {
-        std::cerr << "Unrecognized input file type\n";
+        convertFile(inputPath, outArg);
     }
 }

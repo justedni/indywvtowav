@@ -2,7 +2,9 @@
 
 #include <assert.h>
 
-const unsigned short IndyWV::m_stepSizes[89] =
+short IndyWV::aDeltaTable[5696];
+
+const unsigned short IndyWV::aStepTable[89] =
 {
     7,     8,     9,    10,     11,    12,    13,    14,
     16,    17,    19,    21,    23,    25,    28,    31,
@@ -18,50 +20,43 @@ const unsigned short IndyWV::m_stepSizes[89] =
     32767
 };
 
-char IndyWV::getIndex(int addr, int offset)
+static const char aIndex2Bit[8] = {
+    -1, 4, -1, 4, 0, 0, 0, 0 };
+static const char aIndex3Bit[8] = {
+    -1, -1, 2, 6, -1, -1, 2, 6 };
+static const char aIndex4Bit[16] = {
+    -1, -1, -1, -1, 1, 2, 4, 6, -1, -1, -1, -1, 1, 2, 4, 6 };
+static const char aIndex5Bit[32] = {
+    -1, -1, -1, -1, -1, -1, -1, -1, 1, 1, 1, 2, 2, 4, 5, 6,
+    -1, -1, -1, -1, -1, -1, -1, -1, 1, 1, 1, 2, 2, 4, 5, 6 };
+static const char aIndex6Bit[64] = {
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 5, 5, 6, 6,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 5, 5, 6, 6 };
+static const char aIndex7Bit[128] = {
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2,
+    2, 2, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2,
+    2, 2, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6 };
+
+const char* IndyWV::aIndexTableTable[8] =
 {
-    static const char indexes_8[8] = {
-        -1, 4, -1, 4, 0, 0, 0, 0 };
-    static const char indexes_12[8] = {
-        -1, -1, 2, 6, -1, -1, 2, 6 };
-    static const char indexes_16[16] = {
-        -1, -1, -1, -1, 1, 2, 4, 6, -1, -1, -1, -1, 1, 2, 4, 6 };
-    static const char indexes_20[32] = {
-        -1, -1, -1, -1, -1, -1, -1, -1, 1, 1, 1, 2, 2, 4, 5, 6,
-        -1, -1, -1, -1, -1, -1, -1, -1, 1, 1, 1, 2, 2, 4, 5, 6 };
-    static const char indexes_24[64] = {
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 5, 5, 6, 6,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 5, 5, 6, 6 };
-    static const char indexes_28[128] = {
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2,
-        2, 2, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2,
-        2, 2, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6 };
+    NULL,
+    NULL,
+    aIndex2Bit,
+    aIndex3Bit,
+    aIndex4Bit,
+    aIndex5Bit,
+    aIndex6Bit,
+    aIndex7Bit
+};
 
-    switch (addr)
-    {
-    case 0:
-    case 4:
-    default:
-        assert(false, "No data");
-    case 8:  return indexes_8[offset];
-    case 12: return indexes_12[offset];
-    case 16: return indexes_16[offset];
-    case 20: return indexes_20[offset];
-    case 24: return indexes_24[offset];
-    case 28: return indexes_28[offset];
-    }
-
-    return -1;
-}
-
-const char IndyWV::m_steps[96] =
+const char IndyWV::aStepBits[96] =
 {
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,

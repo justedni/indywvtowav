@@ -130,23 +130,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="cryo_apc.cpp" />
     <ClCompile Include="unit_test.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="indywv.cpp" />
     <ClCompile Include="indywv_data.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="labn.cpp" />
-    <ClCompile Include="wav_writer.cpp" />
-    <ClCompile Include="wv_writer.cpp" />
+    <ClCompile Include="wave.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="common.h" />
+    <ClInclude Include="cryo_apc.h" />
     <ClInclude Include="unit_test.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="indywv.h" />
     <ClInclude Include="labn.h" />
-    <ClInclude Include="wav_format.h" />
-    <ClInclude Include="wav_writer.h" />
-    <ClInclude Include="wv_writer.h" />
+    <ClInclude Include="wave.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
