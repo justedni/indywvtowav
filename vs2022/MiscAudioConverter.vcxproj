@@ -19,23 +19,23 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\formats\cryo_apc.cpp" />
-    <ClCompile Include="src\formats\indywv.cpp" />
-    <ClCompile Include="src\formats\indywv_data.cpp" />
-    <ClCompile Include="src\formats\labn.cpp" />
-    <ClCompile Include="src\formats\wave.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\unit_test.cpp" />
-    <ClCompile Include="src\utils.cpp" />
+    <ClCompile Include="..\src\formats\cryo_apc.cpp" />
+    <ClCompile Include="..\src\formats\indywv.cpp" />
+    <ClCompile Include="..\src\formats\indywv_data.cpp" />
+    <ClCompile Include="..\src\formats\labn.cpp" />
+    <ClCompile Include="..\src\formats\wave.cpp" />
+    <ClCompile Include="..\src\main.cpp" />
+    <ClCompile Include="..\src\unit_test.cpp" />
+    <ClCompile Include="..\src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\formats\common.h" />
-    <ClInclude Include="src\formats\cryo_apc.h" />
-    <ClInclude Include="src\formats\indywv.h" />
-    <ClInclude Include="src\formats\labn.h" />
-    <ClInclude Include="src\formats\wave.h" />
-    <ClInclude Include="src\unit_test.h" />
-    <ClInclude Include="src\utils.h" />
+    <ClInclude Include="..\src\formats\common.h" />
+    <ClInclude Include="..\src\formats\cryo_apc.h" />
+    <ClInclude Include="..\src\formats\indywv.h" />
+    <ClInclude Include="..\src\formats\labn.h" />
+    <ClInclude Include="..\src\formats\wave.h" />
+    <ClInclude Include="..\src\unit_test.h" />
+    <ClInclude Include="..\src\utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>./src;./src/formats</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../src;../src/formats</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

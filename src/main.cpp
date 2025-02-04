@@ -189,7 +189,7 @@ void do_unit_tests()
     };
 
     namespace fs = std::filesystem;
-    auto folder = fs::path("..\\..\\src\\test_files");
+    auto folder = fs::path("..\\..\\..\\src\\test_files");
 
     for (auto& test : tests)
     {
