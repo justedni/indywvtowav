@@ -18,13 +18,32 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\formats\cryo_apc.cpp" />
+    <ClCompile Include="src\formats\indywv.cpp" />
+    <ClCompile Include="src\formats\indywv_data.cpp" />
+    <ClCompile Include="src\formats\labn.cpp" />
+    <ClCompile Include="src\formats\wave.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\unit_test.cpp" />
+    <ClCompile Include="src\utils.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\formats\common.h" />
+    <ClInclude Include="src\formats\cryo_apc.h" />
+    <ClInclude Include="src\formats\indywv.h" />
+    <ClInclude Include="src\formats\labn.h" />
+    <ClInclude Include="src\formats\wave.h" />
+    <ClInclude Include="src\unit_test.h" />
+    <ClInclude Include="src\utils.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{80B5B911-6433-486A-8D69-333AD6F4824D}</ProjectGuid>
-    <RootNamespace>IndyWVTest</RootNamespace>
+    <RootNamespace>MiscAudioConverter</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>IndyWvToWav</ProjectName>
+    <ProjectName>MiscAudioConverter</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -106,6 +125,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>./src;./src/formats</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,25 +149,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="cryo_apc.cpp" />
-    <ClCompile Include="unit_test.cpp" />
-    <ClCompile Include="utils.cpp" />
-    <ClCompile Include="indywv.cpp" />
-    <ClCompile Include="indywv_data.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="labn.cpp" />
-    <ClCompile Include="wave.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="common.h" />
-    <ClInclude Include="cryo_apc.h" />
-    <ClInclude Include="unit_test.h" />
-    <ClInclude Include="utils.h" />
-    <ClInclude Include="indywv.h" />
-    <ClInclude Include="labn.h" />
-    <ClInclude Include="wave.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
